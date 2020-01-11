@@ -3,6 +3,10 @@
 
 using XRTK.Interfaces.Providers.Controllers;
 
+#if WINDOWS_UWP
+using Windows.UI.Input.Spatial;
+#endif // WINDOWS_UWP
+
 namespace XRTK.WindowsMixedReality.Interfaces.Providers.Controllers
 {
     /// <summary>
@@ -10,6 +14,14 @@ namespace XRTK.WindowsMixedReality.Interfaces.Providers.Controllers
     /// </summary>
     public interface IWindowsMixedRealityController : IMixedRealityController
     {
+#if WINDOWS_UWP
 
+        /// <summary>
+        /// Update the controller data from the provided platform state.
+        /// </summary>
+        /// <param name="spatialInteractionSourceState">The <see cref="SpatialInteractionSourceState"/> retrieved from the platform.</param>
+        void UpdateController(SpatialInteractionSourceState spatialInteractionSourceState);
+
+#endif // WINDOWS_UWP
     }
 }
