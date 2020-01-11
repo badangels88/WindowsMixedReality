@@ -8,11 +8,15 @@ using XRTK.Interfaces.InputSystem;
 using XRTK.Providers.Controllers;
 using XRTK.WindowsMixedReality.Interfaces.Providers.Controllers;
 
+#if WINDOWS_UWP
+using Windows.UI.Input.Spatial;
+#endif // WINDOWS_UWP
+
 #if UNITY_WSA
 using UnityEngine;
 using UnityEngine.XR.WSA.Input;
 using XRTK.Services;
-#endif
+#endif // UNITY_WSA
 
 namespace XRTK.WindowsMixedReality.Controllers
 {
@@ -87,17 +91,14 @@ namespace XRTK.WindowsMixedReality.Controllers
 
         #region Update data functions
 
-        /// <summary>
-        /// Update the controller data from the provided platform state
-        /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        public void UpdateController(InteractionSourceState interactionSourceState)
+        /// <inheritdoc />
+        public void UpdateController(SpatialInteractionSourceState spatialInteractionSourceState)
         {
             if (!Enabled) { return; }
 
             base.UpdateController();
 
-            UpdateControllerData(interactionSourceState);
+            UpdateControllerData(spatialInteractionSourceState);
 
             if (Interactions == null)
             {
@@ -114,28 +115,28 @@ namespace XRTK.WindowsMixedReality.Controllers
                     case DeviceInputType.None:
                         break;
                     case DeviceInputType.SpatialPointer:
-                        UpdatePointerData(interactionSourceState, interactionMapping);
+                        UpdatePointerData(spatialInteractionSourceState, interactionMapping);
                         break;
                     case DeviceInputType.Select:
                     case DeviceInputType.Trigger:
                     case DeviceInputType.TriggerTouch:
                     case DeviceInputType.TriggerPress:
-                        UpdateTriggerData(interactionSourceState, interactionMapping);
+                        UpdateTriggerData(spatialInteractionSourceState, interactionMapping);
                         break;
                     case DeviceInputType.SpatialGrip:
-                        UpdateGripData(interactionSourceState, interactionMapping);
+                        UpdateGripData(spatialInteractionSourceState, interactionMapping);
                         break;
                     case DeviceInputType.ThumbStick:
                     case DeviceInputType.ThumbStickPress:
-                        UpdateThumbStickData(interactionSourceState, interactionMapping);
+                        UpdateThumbStickData(spatialInteractionSourceState, interactionMapping);
                         break;
                     case DeviceInputType.Touchpad:
                     case DeviceInputType.TouchpadTouch:
                     case DeviceInputType.TouchpadPress:
-                        UpdateTouchPadData(interactionSourceState, interactionMapping);
+                        UpdateTouchPadData(spatialInteractionSourceState, interactionMapping);
                         break;
                     case DeviceInputType.Menu:
-                        UpdateMenuData(interactionSourceState, interactionMapping);
+                        UpdateMenuData(spatialInteractionSourceState, interactionMapping);
                         break;
                     default:
                         Debug.LogError($"Input [{interactionMapping.InputType}] is not handled for this controller [{GetType().Name}]");
@@ -146,7 +147,7 @@ namespace XRTK.WindowsMixedReality.Controllers
                 interactionMapping.RaiseInputAction(InputSource, ControllerHandedness);
             }
 
-            LastSourceStateReading = interactionSourceState;
+            LastSourceStateReading = spatialInteractionSourceState;
         }
 
         /// <summary>
