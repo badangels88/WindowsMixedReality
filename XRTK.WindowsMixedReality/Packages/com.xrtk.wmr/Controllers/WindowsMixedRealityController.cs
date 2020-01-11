@@ -4,9 +4,9 @@
 using XRTK.Definitions.Devices;
 using XRTK.Definitions.InputSystem;
 using XRTK.Definitions.Utilities;
-using XRTK.Extensions;
 using XRTK.Interfaces.InputSystem;
 using XRTK.Providers.Controllers;
+using XRTK.WindowsMixedReality.Interfaces.Providers.Controllers;
 
 #if UNITY_WSA
 using UnityEngine;
@@ -19,7 +19,7 @@ namespace XRTK.WindowsMixedReality.Controllers
     /// <summary>
     /// A Windows Mixed Reality Controller Instance.
     /// </summary>
-    public class WindowsMixedRealityController : BaseController
+    public class WindowsMixedRealityController : BaseController, IWindowsMixedRealityController
     {
         /// <summary>
         /// Constructor.
