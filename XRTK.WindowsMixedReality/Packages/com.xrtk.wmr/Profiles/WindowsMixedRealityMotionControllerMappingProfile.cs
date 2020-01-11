@@ -26,9 +26,9 @@ namespace XRTK.WindowsMixedReality.Profiles
             {
                 ControllerMappings = new[]
                 {
-                    new MixedRealityControllerMapping("Windows Mixed Reality HoloLens Hand Input", typeof(WindowsMixedRealityController)),
-                    new MixedRealityControllerMapping("Windows Mixed Reality Motion Controller Left", typeof(WindowsMixedRealityController), Handedness.Left),
-                    new MixedRealityControllerMapping("Windows Mixed Reality Motion Controller Right", typeof(WindowsMixedRealityController), Handedness.Right),
+                    new MixedRealityControllerMapping("Windows Mixed Reality HoloLens Hand Input", typeof(WindowsMixedRealityMotionController)),
+                    new MixedRealityControllerMapping("Windows Mixed Reality Motion Controller Left", typeof(WindowsMixedRealityMotionController), Handedness.Left),
+                    new MixedRealityControllerMapping("Windows Mixed Reality Motion Controller Right", typeof(WindowsMixedRealityMotionController), Handedness.Right),
                     new MixedRealityControllerMapping("Open VR Motion Controller Left", typeof(WindowsMixedRealityOpenVRMotionController), Handedness.Left),
                     new MixedRealityControllerMapping("Open VR Motion Controller Right", typeof(WindowsMixedRealityOpenVRMotionController), Handedness.Right),
                 };

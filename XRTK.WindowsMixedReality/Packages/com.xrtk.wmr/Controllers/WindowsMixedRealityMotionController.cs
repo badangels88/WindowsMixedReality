@@ -19,7 +19,7 @@ namespace XRTK.WindowsMixedReality.Controllers
     /// <summary>
     /// A Windows Mixed Reality Controller Instance.
     /// </summary>
-    public class WindowsMixedRealityController : BaseController, IWindowsMixedRealityController
+    public class WindowsMixedRealityMotionController : BaseController, IWindowsMixedRealityController
     {
         /// <summary>
         /// Constructor.
@@ -28,7 +28,7 @@ namespace XRTK.WindowsMixedReality.Controllers
         /// <param name="controllerHandedness"></param>
         /// <param name="inputSource"></param>
         /// <param name="interactions"></param>
-        public WindowsMixedRealityController(TrackingState trackingState, Handedness controllerHandedness, IMixedRealityInputSource inputSource = null, MixedRealityInteractionMapping[] interactions = null)
+        public WindowsMixedRealityMotionController(TrackingState trackingState, Handedness controllerHandedness, IMixedRealityInputSource inputSource = null, MixedRealityInteractionMapping[] interactions = null)
                 : base(trackingState, controllerHandedness, inputSource, interactions)
         {
         }
