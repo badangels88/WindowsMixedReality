@@ -9,14 +9,15 @@ using XRTK.Providers.Controllers;
 using XRTK.WindowsMixedReality.Interfaces.Providers.Controllers;
 
 #if WINDOWS_UWP
+using Windows.Perception.People;
 using Windows.UI.Input.Spatial;
-#endif // WINDOWS_UWP
-
-#if UNITY_WSA
 using UnityEngine;
 using UnityEngine.XR.WSA.Input;
 using XRTK.Services;
-#endif // UNITY_WSA
+using XRTK.Extensions;
+using XRTK.WindowsMixedReality.Extensions;
+using XRTK.WindowsMixedReality.Utilities;
+#endif // WINDOWS_UWP
 
 namespace XRTK.WindowsMixedReality.Controllers
 {
@@ -69,12 +70,12 @@ namespace XRTK.WindowsMixedReality.Controllers
             AssignControllerMappings(DefaultInteractions);
         }
 
-#if UNITY_WSA
+#if WINDOWS_UWP
 
         /// <summary>
         /// The last updated source state reading for this Windows Mixed Reality Controller.
         /// </summary>
-        public InteractionSourceState LastSourceStateReading { get; private set; }
+        public SpatialInteractionSourceState LastSourceStateReading { get; private set; }
 
         private Vector3 currentControllerPosition = Vector3.zero;
         private Quaternion currentControllerRotation = Quaternion.identity;
@@ -88,8 +89,6 @@ namespace XRTK.WindowsMixedReality.Controllers
         private Vector3 currentGripPosition = Vector3.zero;
         private Quaternion currentGripRotation = Quaternion.identity;
         private MixedRealityPose currentGripPose = MixedRealityPose.ZeroIdentity;
-
-        #region Update data functions
 
         /// <inheritdoc />
         public void UpdateController(SpatialInteractionSourceState spatialInteractionSourceState)
@@ -151,33 +150,34 @@ namespace XRTK.WindowsMixedReality.Controllers
         }
 
         /// <summary>
-        /// Update the "Controller" input from the device
+        /// Update the "Controller" input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        private void UpdateControllerData(InteractionSourceState interactionSourceState)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        private void UpdateControllerData(SpatialInteractionSourceState spatialInteractionSourceState)
         {
             var lastState = TrackingState;
-            var sourceKind = interactionSourceState.source.kind;
+            var sourceKind = spatialInteractionSourceState.Source.Kind;
 
             lastControllerPose = currentControllerPose;
 
-            if (sourceKind == InteractionSourceKind.Hand ||
-               (sourceKind == InteractionSourceKind.Controller && interactionSourceState.source.supportsPointing))
+            if (sourceKind == SpatialInteractionSourceKind.Hand ||
+               (sourceKind == SpatialInteractionSourceKind.Controller && spatialInteractionSourceState.Source.IsPointingSupported))
             {
                 // The source is either a hand or a controller that supports pointing.
                 // We can now check for position and rotation.
-                IsPositionAvailable = interactionSourceState.sourcePose.TryGetPosition(out currentControllerPosition);
+                spatialInteractionSourceState.
+                IsPositionAvailable = spatialInteractionSourceState.sourcePose.TryGetPosition(out currentControllerPosition);
 
                 if (IsPositionAvailable)
                 {
-                    IsPositionApproximate = (interactionSourceState.sourcePose.positionAccuracy == InteractionSourcePositionAccuracy.Approximate);
+                    IsPositionApproximate = (spatialInteractionSourceState.sourcePose.positionAccuracy == InteractionSourcePositionAccuracy.Approximate);
                 }
                 else
                 {
                     IsPositionApproximate = false;
                 }
 
-                IsRotationAvailable = interactionSourceState.sourcePose.TryGetRotation(out currentControllerRotation);
+                IsRotationAvailable = spatialInteractionSourceState.sourcePose.TryGetRotation(out currentControllerRotation);
 
                 // Devices are considered tracked if we receive position OR rotation data from the sensors.
                 TrackingState = (IsPositionAvailable || IsRotationAvailable) ? TrackingState.Tracked : TrackingState.NotTracked;
@@ -215,34 +215,42 @@ namespace XRTK.WindowsMixedReality.Controllers
         }
 
         /// <summary>
-        /// Update the "Spatial Pointer" input from the device
+        /// Update the "Spatial Pointer" input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        /// <param name="interactionMapping"></param>
-        private void UpdatePointerData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdatePointerData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
-            interactionSourceState.sourcePose.TryGetPosition(out currentPointerPosition, InteractionSourceNode.Pointer);
-            interactionSourceState.sourcePose.TryGetRotation(out currentPointerRotation, InteractionSourceNode.Pointer);
-
-            currentPointerPose.Position = currentPointerPosition;
-            currentPointerPose.Rotation = currentPointerRotation;
+            if (spatialInteractionSourceState.Source.IsPointingSupported)
+            {
+                SpatialPointerInteractionSourcePose spatialPointerPose = spatialInteractionSourceState.TryGetPointerPose(WindowsMixedRealityUtilities.SpatialCoordinateSystem).TryGetInteractionSourcePose(spatialInteractionSourceState.Source);
+                currentPointerPose.Position = spatialPointerPose.Position.ToUnity();
+                currentPointerPose.Rotation = spatialPointerPose.Orientation.ToUnity();
+            }
+            else
+            {
+                HeadPose headPose = spatialInteractionSourceState.TryGetPointerPose(WindowsMixedRealityUtilities.SpatialCoordinateSystem).Head;
+                currentPointerPose.Position = headPose.Position.ToUnity();
+                currentPointerPose.Rotation = Quaternion.LookRotation(headPose.ForwardDirection.ToUnity(), headPose.UpDirection.ToUnity());
+            }
 
             interactionMapping.PoseData = currentPointerPose;
         }
 
         /// <summary>
-        /// Update the "Spatial Grip" input from the device
+        /// Update the "Spatial Grip" input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        /// <param name="interactionMapping"></param>
-        private void UpdateGripData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdateGripData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
             switch (interactionMapping.AxisType)
             {
                 case AxisType.SixDof:
                     {
-                        interactionSourceState.sourcePose.TryGetPosition(out currentGripPosition, InteractionSourceNode.Grip);
-                        interactionSourceState.sourcePose.TryGetRotation(out currentGripRotation, InteractionSourceNode.Grip);
+                        //SpatialPointerInteractionSourcePose spatialPointerPose = spatialInteractionSourceState.TryGetPointerPose(WindowsMixedRealityUtilities.SpatialCoordinateSystem).TryGetInteractionSourcePose(spatialInteractionSourceState.Source);
+                        spatialInteractionSourceState.sourcePose.TryGetPosition(out currentGripPosition, InteractionSourceNode.Grip);
+                        spatialInteractionSourceState.sourcePose.TryGetRotation(out currentGripRotation, InteractionSourceNode.Grip);
 
                         var cameraRig = MixedRealityToolkit.CameraSystem?.CameraRig;
 
@@ -265,88 +273,88 @@ namespace XRTK.WindowsMixedReality.Controllers
         }
 
         /// <summary>
-        /// Update the Touchpad input from the device
+        /// Update the Touchpad input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        /// <param name="interactionMapping"></param>
-        private void UpdateTouchPadData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdateTouchPadData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
             switch (interactionMapping.InputType)
             {
                 case DeviceInputType.TouchpadTouch:
                     {
-                        interactionMapping.BoolData = interactionSourceState.touchpadTouched;
+                        interactionMapping.BoolData = spatialInteractionSourceState.ControllerProperties.IsTouchpadTouched;
                         break;
                     }
                 case DeviceInputType.TouchpadPress:
                     {
-                        interactionMapping.BoolData = interactionSourceState.touchpadPressed;
+                        interactionMapping.BoolData = spatialInteractionSourceState.ControllerProperties.IsTouchpadPressed;
                         break;
                     }
                 case DeviceInputType.Touchpad:
                     {
-                        interactionMapping.Vector2Data = interactionSourceState.touchpadPosition;
+                        interactionMapping.Vector2Data = new Vector2((float)spatialInteractionSourceState.ControllerProperties.TouchpadX, (float)spatialInteractionSourceState.ControllerProperties.TouchpadY);
                         break;
                     }
             }
         }
 
         /// <summary>
-        /// Update the Thumbstick input from the device
+        /// Update the Thumbstick input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        /// <param name="interactionMapping"></param>
-        private void UpdateThumbStickData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdateThumbStickData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
             switch (interactionMapping.InputType)
             {
                 case DeviceInputType.ThumbStickPress:
                     {
-                        interactionMapping.BoolData = interactionSourceState.thumbstickPressed;
+                        interactionMapping.BoolData = spatialInteractionSourceState.ControllerProperties.IsThumbstickPressed;
                         break;
                     }
                 case DeviceInputType.ThumbStick:
                     {
-                        interactionMapping.Vector2Data = interactionSourceState.thumbstickPosition;
+                        interactionMapping.Vector2Data = new Vector2((float)spatialInteractionSourceState.ControllerProperties.ThumbstickX, (float)spatialInteractionSourceState.ControllerProperties.ThumbstickY);
                         break;
                     }
             }
         }
 
         /// <summary>
-        /// Update the Trigger input from the device
+        /// Update the Trigger input from the device.
         /// </summary>
-        /// <param name="interactionSourceState">The InteractionSourceState retrieved from the platform</param>
-        /// <param name="interactionMapping"></param>
-        private void UpdateTriggerData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdateTriggerData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
             switch (interactionMapping.InputType)
             {
                 case DeviceInputType.TriggerPress:
-                    interactionMapping.BoolData = interactionSourceState.grasped;
+                    interactionMapping.BoolData = spatialInteractionSourceState.IsGrasped;
                     break;
                 case DeviceInputType.Select:
                     {
-                        bool selectPressed = interactionSourceState.selectPressed;
+                        bool selectPressed = spatialInteractionSourceState.IsSelectPressed;
 
                         // BEGIN WORKAROUND: Unity issue #1033526
                         // See https://issuetracker.unity3d.com/issues/hololens-interactionsourcestate-dot-selectpressed-is-false-when-air-tap-and-hold
                         // Bug was discovered May 2018 and still exists as of today Feb 2019 in version 2018.3.4f1, timeline for fix is unknown
                         // The bug only affects the development workflow via Holographic Remoting or Simulation
-                        if (interactionSourceState.source.kind == InteractionSourceKind.Hand)
+                        if (spatialInteractionSourceState.Source.Kind == SpatialInteractionSourceKind.Hand)
                         {
                             Debug.Assert(!(UnityEngine.XR.WSA.HolographicRemoting.ConnectionState == UnityEngine.XR.WSA.HolographicStreamerConnectionState.Connected
-                                           && interactionSourceState.selectPressed),
+                                           && selectPressed),
                                          "Unity issue #1033526 seems to have been resolved. Please remove this ugly workaround!");
 
                             // This workaround is safe as long as all these assumptions hold:
-                            Debug.Assert(!interactionSourceState.source.supportsGrasp);
-                            Debug.Assert(!interactionSourceState.source.supportsMenu);
-                            Debug.Assert(!interactionSourceState.source.supportsPointing);
-                            Debug.Assert(!interactionSourceState.source.supportsThumbstick);
-                            Debug.Assert(!interactionSourceState.source.supportsTouchpad);
+                            Debug.Assert(!spatialInteractionSourceState.Source.IsGraspSupported);
+                            Debug.Assert(!spatialInteractionSourceState.Source.IsMenuSupported);
+                            Debug.Assert(!spatialInteractionSourceState.Source.IsPointingSupported);
+                            Debug.Assert(!spatialInteractionSourceState.Source.Controller.HasThumbstick);
+                            Debug.Assert(!spatialInteractionSourceState.Source.Controller.HasTouchpad);
 
-                            selectPressed = interactionSourceState.anyPressed;
+                            selectPressed = spatialInteractionSourceState.IsPressed;
                         }
                         // END WORKAROUND: Unity issue #1033526
 
@@ -355,12 +363,12 @@ namespace XRTK.WindowsMixedReality.Controllers
                     }
                 case DeviceInputType.Trigger:
                     {
-                        interactionMapping.FloatData = interactionSourceState.selectPressedAmount;
+                        interactionMapping.FloatData = (float)spatialInteractionSourceState.SelectPressedValue;
                         break;
                     }
                 case DeviceInputType.TriggerTouch:
                     {
-                        interactionMapping.BoolData = interactionSourceState.selectPressedAmount > 0;
+                        interactionMapping.BoolData = spatialInteractionSourceState.SelectPressedValue > 0;
                         break;
                     }
             }
@@ -369,15 +377,13 @@ namespace XRTK.WindowsMixedReality.Controllers
         /// <summary>
         /// Update the Menu button state.
         /// </summary>
-        /// <param name="interactionSourceState"></param>
-        /// <param name="interactionMapping"></param>
-        private void UpdateMenuData(InteractionSourceState interactionSourceState, MixedRealityInteractionMapping interactionMapping)
+        /// <param name="spatialInteractionSourceState">The InteractionSourceState retrieved from the platform.</param>
+        /// <param name="interactionMapping">The interaction mapping to update.</param>
+        private void UpdateMenuData(SpatialInteractionSourceState spatialInteractionSourceState, MixedRealityInteractionMapping interactionMapping)
         {
-            interactionMapping.BoolData = interactionSourceState.menuPressed;
+            interactionMapping.BoolData = spatialInteractionSourceState.IsMenuPressed;
         }
 
-        #endregion Update data functions
-
-#endif // UNITY_WSA
+#endif // WINDOWS_UWP
     }
 }

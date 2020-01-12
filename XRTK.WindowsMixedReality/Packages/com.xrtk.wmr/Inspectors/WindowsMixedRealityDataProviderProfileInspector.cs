@@ -12,21 +12,19 @@ namespace XRTK.WindowsMixedReality.Inspectors
     [CustomEditor(typeof(WindowsMixedRealityControllerDataProviderProfile))]
     public class WindowsMixedRealityDataProviderProfileInspector : BaseMixedRealityProfileInspector
     {
-        private SerializedProperty windowsManipulationGestureSettings;
+        private SerializedProperty gestureRecognitionStartBehaviour;
+        private SerializedProperty manipulationGestureSettings;
         private SerializedProperty useRailsNavigation;
-        private SerializedProperty windowsNavigationGestureSettings;
-        private SerializedProperty windowsRailsNavigationGestures;
-        private SerializedProperty windowsGestureAutoStart;
+        private SerializedProperty railsNavigationGestureSettings;
 
         protected override void OnEnable()
         {
             base.OnEnable();
 
-            windowsManipulationGestureSettings = serializedObject.FindProperty("manipulationGestures");
-            useRailsNavigation = serializedObject.FindProperty("useRailsNavigation");
-            windowsNavigationGestureSettings = serializedObject.FindProperty("navigationGestures");
-            windowsRailsNavigationGestures = serializedObject.FindProperty("railsNavigationGestures");
-            windowsGestureAutoStart = serializedObject.FindProperty("windowsGestureAutoStart");
+            gestureRecognitionStartBehaviour = serializedObject.FindProperty(nameof(gestureRecognitionStartBehaviour));
+            manipulationGestureSettings = serializedObject.FindProperty(nameof(manipulationGestureSettings));
+            useRailsNavigation = serializedObject.FindProperty(nameof(useRailsNavigation));
+            railsNavigationGestureSettings = serializedObject.FindProperty(nameof(railsNavigationGestureSettings));
         }
 
         public override void OnInspectorGUI()
@@ -46,13 +44,20 @@ namespace XRTK.WindowsMixedReality.Inspectors
             thisProfile.CheckProfileLock();
 
             serializedObject.Update();
+
+            EditorGUILayout.BeginVertical("Label");
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Windows Gesture Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(windowsGestureAutoStart);
-            EditorGUILayout.PropertyField(windowsManipulationGestureSettings);
-            EditorGUILayout.PropertyField(windowsNavigationGestureSettings);
-            EditorGUILayout.PropertyField(useRailsNavigation);
-            EditorGUILayout.PropertyField(windowsRailsNavigationGestures);
+
+            if (MixedRealityInspectorUtility.CheckProfilePlatform(Definitions.Utilities.SupportedPlatforms.WindowsUniversal | Definitions.Utilities.SupportedPlatforms.Editor))
+            {
+                EditorGUILayout.LabelField("Windows Gesture Settings", EditorStyles.boldLabel);
+                EditorGUILayout.PropertyField(gestureRecognitionStartBehaviour);
+                EditorGUILayout.PropertyField(manipulationGestureSettings);
+                EditorGUILayout.PropertyField(useRailsNavigation);
+                EditorGUILayout.PropertyField(railsNavigationGestureSettings);
+            }
+
+            EditorGUILayout.EndVertical();
             serializedObject.ApplyModifiedProperties();
         }
     }
